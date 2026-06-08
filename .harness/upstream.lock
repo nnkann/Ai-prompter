@@ -1,0 +1,12 @@
+version: 1
+schema: harness-upstream-lock
+upstream:
+  id: harness-starter
+  repo: /Users/kann/projects/harness-starter
+  remote: harness-upstream
+installed:
+  status: partial
+  note: Ai-prompter is registered in Hermes config and now has repo-local Hermes worker contracts. Full .claude/HARNESS.json bootstrap is still pending.
+ownership:
+  core_changes: upstream-owned
+  project_overlay: downstream-owned

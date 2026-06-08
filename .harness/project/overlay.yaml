@@ -1,0 +1,16 @@
+version: 1
+schema: harness-project-overlay
+project:
+  id: ai-prompter
+  name: Ai-prompter
+  repo: /Users/kann/projects/Ai-prompter
+  type: harness-downstream
+  primary_language: typescript
+policy:
+  commit_policy: owner-approved
+  secrets_policy: never-print-or-commit
+  worktree_policy: project-policy
+  durable_worker_roles_live_in: .harness/hermes/workers.yaml
+boundaries:
+  repo_root: /Users/kann/projects/Ai-prompter
+  local_runtime_state: /Users/kann/.hermes

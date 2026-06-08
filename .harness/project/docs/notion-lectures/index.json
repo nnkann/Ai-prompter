@@ -1,0 +1,38 @@
+[
+  {
+    "day": "day1",
+    "id": "3fa2eda1-21e5-4f1b-b0f4-c7dd00bc32e9",
+    "title": "Day1. 프롬프트 엔지니어링 (Prompt Engineering)",
+    "file": "docs/notion-lectures/day1.md",
+    "blockCount": 173,
+    "chars": 43456,
+    "lastEdited": "2026-03-20T02:55:00.000Z"
+  },
+  {
+    "day": "day2",
+    "id": "272bac7f-0000-80ae-9108-d1da39378618",
+    "title": "Day2. AI Character Class",
+    "file": "docs/notion-lectures/day2.md",
+    "blockCount": 195,
+    "chars": 50499,
+    "lastEdited": "2026-04-29T06:17:00.000Z"
+  },
+  {
+    "day": "day3",
+    "id": "2e1bac7f-0000-8023-890a-d929c53adaca",
+    "title": "Day3.ComfyUI_Basic",
+    "file": "docs/notion-lectures/day3.md",
+    "blockCount": 289,
+    "chars": 81214,
+    "lastEdited": "2026-04-09T01:42:00.000Z"
+  },
+  {
+    "day": "day4",
+    "id": "336bac7f-0000-804c-8881-f684418f9733",
+    "title": "Day4. AI 영상 제작 파이프라인",
+    "file": "docs/notion-lectures/day4.md",
+    "blockCount": 368,
+    "chars": 80512,
+    "lastEdited": "2026-05-15T01:17:00.000Z"
+  }
+]

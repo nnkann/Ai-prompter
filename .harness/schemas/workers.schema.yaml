@@ -1,0 +1,59 @@
+version: 1
+schema: harness-workers-schema
+required_files:
+  - .harness/upstream.lock
+  - .harness/hermes/workers.yaml
+  - .harness/hermes/board-assignees.yaml
+  - .harness/hermes/profiles.yaml
+  - .harness/hermes/profile-skills.yaml
+  - .harness/hermes/coordination.yaml
+  - .harness/hermes/cps-profile-routing.yaml
+  - .harness/hermes/doc-generation.yaml
+  - .harness/project/overlay.yaml
+roles:
+  required_fields:
+    - name
+    - assignee_shape
+    - responsibility
+    - write_permission
+    - preferred_engine_class
+    - timeout
+    - concurrency
+    - accepts
+    - refuses
+    - lifecycle_terminator
+  allowed_write_permissions:
+    - read-only
+    - limited
+    - scoped-write
+  forbidden_engine_terms:
+    - claude
+    - codex
+    - gpt
+    - gemini
+    - gemma
+    - copilot
+    - agy
+    - openai
+    - anthropic
+    - google
+    - grok
+    - llama
+  note: "Role contracts are provider-independent. Concrete model/provider bindings live in local Hermes profile config."
+lane_contract:
+  required_policy_fields:
+    - lane_shape
+    - external_cli_lane
+    - lifecycle_truth
+    - external_executor_policy
+assignee_contract:
+  required: board-selectable-concrete-profile-names
+  assignee_identity: concrete-hermes-profile-name
+  role_archetype: classification-only
+  no_arbitrary_fallback: true
+profile_strategy:
+  required: role-based-profiles
+  project_specific_profiles: tiered-fleet
+  final_gate_profile: moderator
+  default_project_fleet: [moderator, orchestrator, coder, reviewer, threat-guard]
+  default_shared_fleet: [researcher, advisor, designer, marketer]

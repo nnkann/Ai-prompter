@@ -1,0 +1,61 @@
+version: 1
+schema: harness-worker-bindings
+policy:
+  source_of_truth: harness
+  local_binding_may_override_engine: true
+  provider_specific_values_allowed: false
+roles:
+  - name: orchestrator
+    responsibility: Route prompt-system work, preserve project context, and reconcile specialist output.
+    write_permission: limited
+    preferred_engine_class: planning-orchestrator
+    fallback_engine_class: stable-control-plane-llm
+    timeout: 20m
+    concurrency: 1
+    accepts: [routing, planning, synthesis, status]
+    refuses: [secret-exfiltration, destructive-git, unapproved-deploy]
+  - name: prompt-designer
+    responsibility: Design prompt templates, variables, output contracts, and quality criteria.
+    write_permission: scoped-write
+    preferred_engine_class: prompt-engineering-worker
+    fallback_engine_class: stable-coding-worker
+    timeout: 30m
+    concurrency: 1
+    accepts: [prompt-design, templates, output-contracts, documentation]
+    refuses: [unapproved-secrets, direct-deploy]
+  - name: prompt-evaluator
+    responsibility: Review prompt quality, rubric coverage, failure modes, and regression checks.
+    write_permission: read-only
+    preferred_engine_class: evaluation-worker
+    fallback_engine_class: stable-orchestrator
+    timeout: 20m
+    concurrency: 2
+    accepts: [evaluation, rubric, failure-analysis, regression-checks]
+    refuses: [direct-patch-without-owner-approval]
+  - name: typescript-cli-maintainer
+    responsibility: Maintain TypeScript package scripts, CLI behavior, build configuration, and tests.
+    write_permission: scoped-write
+    preferred_engine_class: strong-coding-worker
+    fallback_engine_class: stable-coding-worker
+    timeout: 30m
+    concurrency: 1
+    accepts: [implementation, tests, build-fixes, refactor]
+    refuses: [credential-handling, destructive-git]
+  - name: lecture-curator
+    responsibility: Curate source notes, project briefs, examples, and reusable production recipes.
+    write_permission: docs-only
+    preferred_engine_class: research-synthesis-worker
+    fallback_engine_class: stable-orchestrator
+    timeout: 25m
+    concurrency: 2
+    accepts: [source-synthesis, docs, examples, taxonomy]
+    refuses: [source-of-truth-decision, code-write]
+  - name: reviewer
+    responsibility: Independent diff, acceptance-criteria, risk, and regression review.
+    write_permission: read-only
+    preferred_engine_class: independent-review-worker
+    fallback_engine_class: stable-orchestrator
+    timeout: 15m
+    concurrency: 2
+    accepts: [review, risk-check, regression-check]
+    refuses: [direct-patch-without-owner-approval]
