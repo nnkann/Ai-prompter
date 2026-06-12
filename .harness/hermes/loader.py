@@ -125,13 +125,73 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     if yaml is not None:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
-    data: dict[str, Any] = {}
+
+    # Minimal YAML fallback for environments without PyYAML.
+    # Supports the manifest shapes used here: nested mappings, scalar values,
+    # scalar lists, and lists of shallow mapping objects.
+    lines: list[tuple[int, str]] = []
     for raw in path.read_text(encoding="utf-8").splitlines():
-        if not raw.strip() or raw.lstrip().startswith("#") or raw.startswith(" ") or ":" not in raw:
+        if not raw.strip() or raw.lstrip().startswith("#"):
             continue
-        key, _, value = raw.partition(":")
-        data[key.strip()] = _scalar(value)
-    return data
+        lines.append((len(raw) - len(raw.lstrip(" ")), raw.strip()))
+
+    def parse_block(index: int, indent: int) -> tuple[Any, int]:
+        if index >= len(lines) or lines[index][0] < indent:
+            return {}, index
+        if lines[index][0] == indent and lines[index][1].startswith("- "):
+            return parse_list(index, indent)
+        return parse_mapping(index, indent)
+
+    def parse_mapping(index: int, indent: int, initial: dict[str, Any] | None = None) -> tuple[dict[str, Any], int]:
+        mapping: dict[str, Any] = initial or {}
+        while index < len(lines):
+            line_indent, line = lines[index]
+            if line_indent < indent or line.startswith("- "):
+                break
+            if line_indent > indent:
+                index += 1
+                continue
+            if ":" not in line:
+                index += 1
+                continue
+            key, _, value = line.partition(":")
+            key = key.strip()
+            value = value.strip()
+            index += 1
+            if value:
+                mapping[key] = _scalar(value)
+            else:
+                child, index = parse_block(index, indent + 2)
+                mapping[key] = child
+        return mapping, index
+
+    def parse_list(index: int, indent: int) -> tuple[list[Any], int]:
+        values: list[Any] = []
+        while index < len(lines):
+            line_indent, line = lines[index]
+            if line_indent != indent or not line.startswith("- "):
+                break
+            item_text = line[2:].strip()
+            index += 1
+            if ":" in item_text:
+                key, _, value = item_text.partition(":")
+                item: dict[str, Any] = {}
+                if value.strip():
+                    item[key.strip()] = _scalar(value.strip())
+                else:
+                    child, index = parse_block(index, indent + 2)
+                    item[key.strip()] = child
+                if index < len(lines) and lines[index][0] > indent:
+                    item, index = parse_mapping(index, indent + 2, item)
+                values.append(item)
+            else:
+                values.append(_scalar(item_text))
+                if index < len(lines) and lines[index][0] > indent:
+                    _, index = parse_block(index, indent + 2)
+        return values, index
+
+    parsed, _ = parse_block(0, lines[0][0] if lines else 0)
+    return parsed if isinstance(parsed, dict) else {}
 
 
 def _list(value: Any) -> list[Any]:
@@ -252,8 +312,8 @@ def _validate() -> dict[str, Any]:
             if f"name: {profile}" not in text:
                 errors.append(f"profiles contract missing required profile: {profile}")
     for path, terms in [
-        (PROFILE_DOC_SOUL, ["`HERMES_KANBAN_WORKSPACE` is the filesystem anchor", "Profile output is evidence", "<project>-maat", "shared-seshat"]),
-        (PROFILE_DOC_AGENTS, ["task.assignee", "threat-guard", "no fallback profile", "<project>-sekhmet"]),
+        (PROFILE_DOC_SOUL, ["`HERMES_KANBAN_WORKSPACE` is the filesystem anchor", "Profile output is evidence", "<abbr>_maat", "seshat"]),
+        (PROFILE_DOC_AGENTS, ["task.assignee", "threat-guard", "no fallback profile", "<abbr>_sekhmet"]),
         (PROFILE_DOC_USER, ["User preferences belong in `USER.md`", "Forbidden Memory", "Project Isolation"]),
     ]:
         if path.exists():

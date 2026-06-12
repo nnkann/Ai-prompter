@@ -48,8 +48,10 @@ required_assignee_contracts:
   - concrete-hermes-profile-name
   - role_archetype is classification
   - no arbitrary fallback profile may execute
-  - <project>-<egyptian-name>
-  - shared-<egyptian-name>
+  - <abbr>_<egyptian-name>
+  - <project>-<egyptian-name> compatibility aliases resolve before dispatch
+  - <egyptian-name>
+  - shared-<egyptian-name> compatibility aliases resolve before dispatch
 required_doc_generation_sections:
   - cps_decision
   - document_classification

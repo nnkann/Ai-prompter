@@ -8,18 +8,25 @@ policy:
   do_not_import: Harness agents or skills
   memory_policy: profile memory may keep thin project pointers and outcome summaries, never full CPS or AC bodies.
 naming:
-  project_template: <project>-<deity>
-  shared_template: shared-<deity>
+  project_template: <abbr>_<deity>
+  project_compatibility_alias: <project>-<deity>
+  shared_template: <deity>
+  shared_compatibility_alias: shared-<deity>
   examples:
-    moderator: <project>-maat
-    orchestrator: <project>-thoth
-    coder: <project>-ptah
-    reviewer: <project>-anubis
-    threat-guard: <project>-sekhmet
-    researcher: shared-seshat
-    advisor: shared-nefertum
-    designer: shared-hathor
-    marketer: shared-hu
+    moderator: <abbr>_maat
+    orchestrator: <abbr>_thoth
+    coder: <abbr>_ptah
+    reviewer: <abbr>_anubis
+    threat-guard: <abbr>_sekhmet
+    researcher: seshat
+    advisor: nefertum
+    designer: hathor
+    marketer: hu
+  ai_prompter_concrete_lanes:
+    orchestrator: ap_thoth
+    coder_cli_runtime: ap_ptah
+    prompt_evaluator_reviewer: ap_anubis
+    advisory_only: [seshat, hathor, nefertum, hu]
 persona_axes:
   external-truth: official and current external evidence first.
   internal-truth: repo, docs, rules, existing contracts, and current implementation first.

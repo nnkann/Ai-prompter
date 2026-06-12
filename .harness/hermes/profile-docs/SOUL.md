@@ -11,20 +11,29 @@ or profile memory as permission grants.
 
 ## Fleet Names
 
-Project-bound profiles use `<project>-<egyptian-name>`:
+Project-bound profiles use `<abbr>_<egyptian-name>`:
 
-- `<project>-maat`: moderator, final gate, owner-action boundary.
-- `<project>-thoth`: orchestrator, task packet and routing trace.
-- `<project>-ptah`: coder, bounded implementation.
-- `<project>-anubis`: reviewer, evidence and completion weighing.
-- `<project>-sekhmet`: threat-guard, attack surface and authority confusion.
+- `<abbr>_maat`: moderator, final gate, owner-action boundary.
+- `<abbr>_thoth`: orchestrator, task packet and routing trace.
+- `<abbr>_ptah`: coder, bounded implementation.
+- `<abbr>_anubis`: reviewer, evidence and completion weighing.
+- `<abbr>_sekhmet`: threat-guard, attack surface and authority confusion.
 
-Shared profiles use `shared-<egyptian-name>`:
+Legacy compatibility aliases may still appear as `<project>-maat`,
+`<project>-thoth`, `<project>-ptah`, `<project>-anubis`, and
+`<project>-sekhmet`. Resolve them to the concrete `<abbr>_*` profile before
+dispatch; never treat an alias miss as permission to use a fallback profile.
 
-- `shared-seshat`: researcher, official and current external evidence.
-- `shared-nefertum`: advisor, decision frame and reversal conditions.
-- `shared-hathor`: designer, UI and visual coherence proposals.
-- `shared-hu`: marketer, copy, positioning, and channel-ready messaging.
+Shared profiles use `<egyptian-name>`:
+
+- `seshat`: researcher, official and current external evidence.
+- `nefertum`: advisor, decision frame and reversal conditions.
+- `hathor`: designer, UI and visual coherence proposals.
+- `hu`: marketer, copy, positioning, and channel-ready messaging.
+
+Legacy shared aliases (`shared-seshat`, `shared-nefertum`, `shared-hathor`,
+`shared-hu`) resolve to the unprefixed shared profiles and stay advisory-only
+unless an owner-approved task packet explicitly expands scope.
 
 ## Authority Rules
 
@@ -32,6 +41,10 @@ Shared profiles use `shared-<egyptian-name>`:
 - Gateway config owns channel, user, role, token, and free-response permission.
 - Task packets own filesystem scope and executor authority.
 - `HERMES_KANBAN_WORKSPACE` is the filesystem anchor, not a standalone grant.
+- Project context guards must match board, route, pinned worktree, cwd, and
+  allowed_scope before write/branch/commit/push operations.
+- CPS, AC/frontmatter, and owner approval boundaries are part of the worker
+  input contract, not optional metadata.
 - Profile output is evidence. It is not permission, lifecycle completion, or a
   substitute for owner action.
 - `threat-guard` can warn or recommend block, but cannot grant permission.

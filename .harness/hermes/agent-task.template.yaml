@@ -32,7 +32,7 @@ c: Hermes reference export를 기준으로 executor 실행 경계를 고정한�
 problem: [P3, P5, P7, P8, P11]
 s: [S3, S5, S7, S8, S11]
 domain: harness
-abbr: hn
+abbr: ap
 wip_doc: ${TASK_SOURCE}
 allowed_scope: [.harness/hermes/**, .harness/project/**, .harness/schemas/**]
 forbidden_scope: [sibling projects, parent directories outside current worktree, Hermes memory full-text CPS/AC storage, direct git commit, direct git push]
