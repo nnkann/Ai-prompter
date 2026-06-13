@@ -29,15 +29,21 @@ Copy `.env.example` to `.env` when provider credentials are needed.
 ## Project Assets
 
 - `src/` - PHE 계약 검증과 보조 CLI를 둘 제품 코드 영역.
-- `docs/PRD.md` - PHE PRD 원문.
-- `docs/guides/project_kickoff.md` - CPS, 스택, 도메인 결정.
-- `docs/WIP/` - 진행 중인 제품/하네스 작업 문서.
-- `docs/ai-metaverse-project-brief.md` - AI Metaverse 강의 노트에서 정리한 draft brief.
-- `docs/notion-lectures/` - Day1-Day4 Notion lecture exports used as source material.
+- `.harness/project/docs/PRD.md` - PHE PRD 원문.
+- `.harness/project/docs/guides/project_kickoff.md` - CPS, 스택, 도메인 결정.
+- `.harness/project/docs/guides/pipeline_contract.md` - Source intake, analysis, storage, request/notification/dashboard field contract.
+- `.harness/project/docs/guides/bot_runtime_strategy.md` - Discord/Hermes bot runtime 분리 정책.
+- `.harness/project/docs/guides/agent_boundary_and_learning_architecture.md` - 자동 수집/학습 agent와 팀 요청 prompt agent의 제품 경계.
+- `.harness/project/docs/guides/source_discovery_cps_schema_cron_policy.md` - 무료/저비용 source discovery, CPS Supabase schema, cron/dedupe 정책.
+- `.harness/project/docs/guides/bootstrap_sequence_and_cron_contract.md` - Supabase/Drive/endpoint 선행 bootstrap 순서와 Hermes cron 생성 gate.
+- `.harness/project/cron/phe_cron_jobs.yaml` - 상세 Hermes cron job 계약.
+- `.harness/project/docs/WIP/` - 아직 완료되지 않은 제품/하네스 작업 문서.
+- `.harness/project/docs/ai-metaverse-project-brief.md` - AI Metaverse 강의 노트에서 정리한 draft brief.
+- `.harness/project/docs/notion-lectures/` - Day1-Day4 Notion lecture exports used as source material.
 
 ## Runtime Adapter Boundary
 
-이 repo의 PHE 제품 구조는 `src/`, `docs/PRD.md`, `docs/guides/project_kickoff.md`, `docs/WIP/`를 기준으로 읽는다. 루트의 하네스/에이전트 adapter 파일은 작업 실행과 검증을 위한 운영 표면이며, PHE 앱 아키텍처 자체로 보지 않는다.
+이 repo의 PHE 제품 구조는 `src/`, `.harness/project/docs/PRD.md`, `.harness/project/docs/guides/project_kickoff.md`, `.harness/project/docs/WIP/`를 기준으로 읽는다. 루트의 하네스/에이전트 adapter 파일은 작업 실행과 검증을 위한 운영 표면이며, PHE 앱 아키텍처 자체로 보지 않는다.
 
 | Path | 역할 | 현재 판단 |
 |------|------|-----------|

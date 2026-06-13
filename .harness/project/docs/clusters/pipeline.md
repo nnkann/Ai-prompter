@@ -13,6 +13,6 @@ updated: 2026-06-04
 
 _(문서 없음)_
 
-## 진행 중 (WIP)
+## 완료된 가이드
 
-- [Pipeline 계약 정의](../WIP/guides--pl_pipeline_contract.md)
+- [Pipeline 계약 정의](../guides/pipeline_contract.md)

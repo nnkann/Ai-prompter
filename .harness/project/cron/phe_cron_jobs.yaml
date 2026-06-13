@@ -1,0 +1,247 @@
+# PHE cron contract for Hermes Scheduler
+# These jobs are NOT created yet. They become runnable only after Supabase,
+# Drive folder/credentials, Discord channel IDs, and PHE endpoint scripts exist.
+# Owner approval is required before running `hermes cron create` for any job.
+
+version: 1
+scheduler: hermes_cron
+project: ai-prompter
+workdir: /Users/kann/projects/Ai-prompter
+secrets_policy:
+  store_in_repo: false
+  required_runtime_env:
+    - PHE_SUPABASE_URL
+    - PHE_SUPABASE_SERVICE_ROLE_KEY
+    - PHE_GOOGLE_DRIVE_FOLDER_ID
+    - PHE_GOOGLE_SERVICE_ACCOUNT_JSON
+    - PHE_DISCORD_BOT_TOKEN
+    - PHE_DISCORD_GUILD_ID
+    - PHE_DISCORD_OUTPUT_CHANNEL_ID
+    - PHE_INTERNAL_ENDPOINT_SECRET
+boundary:
+  supabase_cron: rejected
+  reason: Supabase is the database/vector store, not the scheduler for this MVP.
+  hermes_cron_role: control-plane scheduler that invokes PHE scripts/endpoints and records cron_runs.
+  production_promotion_rule: move to a dedicated scheduler/worker only when Hermes availability or ownership becomes a bottleneck.
+common_guards:
+  - Normalize URL and compute source_fingerprint before any LLM analysis.
+  - Check sources.source_fingerprint and assets.asset_fingerprint before storing.
+  - Never use owner personal Hermes gateway or personal X account for collection.
+  - Never log raw tokens, service-role keys, webhook URLs, or Drive credentials.
+  - Mark confidence=low and needs_review=true when platform access is partial.
+  - Each job writes one cron_runs row with status started/ok/partial/failed/skipped.
+  - Accepted volume caps apply after dedupe and quality scoring, not before.
+
+jobs:
+  - name: phe_manual_discord_intake
+    type: event_driven
+    hermes_mechanism: webhook_or_gateway_event
+    schedule: immediate
+    created_by: future_discord_collector_bot
+    purpose: Process user-submitted links, screenshots, files, or notes immediately.
+    trigger:
+      source: discord
+      event: message_create_or_slash_command
+      channels: pending_user_definition
+    input:
+      required:
+        - discord_message_id
+        - submitted_by
+      optional:
+        - links
+        - attachments
+        - note_text
+        - requested_artist_or_style
+    steps:
+      - validate guild/channel/user allowlist
+      - extract links and attachment metadata
+      - canonicalize URLs and compute source_fingerprint
+      - dedupe against sources/assets
+      - enrich accessible metadata/text/OCR
+      - classify CPS fields c/problem/s/evidence
+      - save source/assets/prompt candidate rows
+      - reply with saved/skipped/needs_review summary
+    caps:
+      accepted_items: unlimited_manual
+      max_links_per_message: 10
+      max_attachments_per_message: 10
+    output:
+      tables: [sources, assets, prompt_assets, cps_clusters, asset_cluster_links, cron_runs]
+      discord_reply: true
+    failure_policy:
+      partial_access: save_metadata_and_needs_review
+      duplicate: increment_sighting_count
+      fatal: record_failed_cron_run_and_reply
+
+  - name: phe_artist_daily_watch
+    type: scheduled
+    hermes_schedule: "30 8 * * *"
+    timezone: local
+    purpose: Once daily, check configured artists/accounts/channels across platforms.
+    script_target: scripts/cron/phe_artist_daily_watch.ts
+    enabled_after:
+      - supabase_project_created
+      - watched_sources_configured
+      - drive_folder_created
+    input:
+      config_file: config/watched_sources.yaml
+      platforms: [x_like, youtube, linkedin, web]
+    selection_policy:
+      per_platform_or_group_accept_cap: 3
+      ranking: [freshness, artist_priority, prompt_relevance, media_quality, dedupe_novelty]
+    steps:
+      - load watched_sources
+      - fetch/search each configured source with free/approved method
+      - normalize and dedupe
+      - score candidates
+      - accept top 2-3 per platform/group
+      - analyze accepted candidates and save
+    output:
+      tables: [sources, assets, prompt_assets, cps_clusters, asset_cluster_links, cron_runs]
+      digest: daily_short_summary_to_review_channel
+    failure_policy:
+      source_blocked: mark_low_confidence_needs_review
+      rate_limited: stop_platform_group_and_record_partial
+      no_new_items: cron_runs.status=skipped
+
+  - name: phe_daily_prompt_trend_search
+    type: scheduled
+    hermes_schedule: "0 9 * * *"
+    timezone: local
+    purpose: Find hot/current AI prompt and image/video-generation workflow references.
+    script_target: scripts/cron/phe_daily_prompt_trend_search.ts
+    enabled_after:
+      - google_discovery_path_confirmed
+      - supabase_project_created
+    input:
+      query_families:
+        - ai_prompt_workflows
+        - image_generation_prompts
+        - video_generation_prompts
+        - artist_style_breakdowns
+        - model_specific_prompt_tips
+      search_backend_order: [google_alerts_or_google_review, direct_source_feeds, experimental_fallback]
+    selection_policy:
+      accepted_total_cap: 5
+      min_default: 3
+      ranking: [recency, relevance_to_prompt_generation, source_authority, novelty, media_examples]
+    steps:
+      - collect candidate links/snippets
+      - remove duplicates and previously seen URLs
+      - score and accept 3-5 total
+      - analyze prompt/result/trend/template implications
+      - save sources and prompt_assets
+      - link or create cps_clusters
+    output:
+      tables: [sources, prompt_assets, cps_clusters, asset_cluster_links, cron_runs]
+      digest: daily_hot_prompt_digest
+    failure_policy:
+      google_blocked: use_alert_inbox_only_and_record_partial
+      no_candidates: cron_runs.status=skipped
+
+  - name: phe_channel_ingest_reconciliation
+    type: scheduled
+    hermes_schedule: "15 9 * * *"
+    timezone: local
+    purpose: Reconcile Discord source channels for missed links after event-driven intake.
+    script_target: scripts/cron/phe_channel_ingest_reconciliation.ts
+    enabled_after:
+      - discord_channel_ids_defined
+      - supabase_project_created
+    input:
+      lookback_hours: 26
+      channels: pending_user_definition
+    selection_policy:
+      accepted_cap: 20
+      ranking: [manual_submission_priority, link_novelty, attachment_quality]
+    steps:
+      - fetch recent channel messages
+      - skip messages already processed by discord_message_id or source_fingerprint
+      - process remaining as manual_discord intake
+    output:
+      tables: [sources, assets, cron_runs]
+      digest: reconciliation_summary
+    failure_policy:
+      discord_fetch_failed: record_failed_cron_run
+      duplicate_only: cron_runs.status=skipped
+
+  - name: phe_learning_cluster_update
+    type: scheduled
+    hermes_schedule: "0 10 * * *"
+    timezone: local
+    purpose: Recompute ontology/RAG cluster links for newly accepted source and prompt rows.
+    script_target: scripts/cron/phe_learning_cluster_update.ts
+    enabled_after:
+      - supabase_project_created
+      - embedding_provider_configured
+    input:
+      since_last_successful_run: true
+      include_needs_review: false
+    steps:
+      - load unclustered accepted sources/prompt_assets
+      - compute or reuse embeddings
+      - assign to existing cps_clusters or create candidate clusters
+      - update asset_cluster_links scores and reasons
+      - update trend keywords/template hints
+    caps:
+      max_items_per_run: 50
+      max_new_clusters_per_run: 10
+    output:
+      tables: [cps_clusters, asset_cluster_links, prompt_assets, cron_runs]
+      digest: cluster_update_summary
+    failure_policy:
+      embedding_failed: mark_partial_and_retry_next_run
+      no_new_items: cron_runs.status=skipped
+
+  - name: phe_review_queue_digest
+    type: scheduled
+    hermes_schedule: "30 10 * * *"
+    timezone: local
+    purpose: Surface low-confidence, blocked, or partial items for human review.
+    script_target: scripts/cron/phe_review_queue_digest.ts
+    enabled_after:
+      - discord_output_channel_defined
+      - supabase_project_created
+    input:
+      filters:
+        needs_review: true
+        confidence: [low]
+      lookback_days: 7
+    caps:
+      max_items_in_discord_digest: 20
+    steps:
+      - query needs_review rows
+      - group by failure reason/platform
+      - post digest to review channel
+      - record cron_runs summary
+    output:
+      tables: [cron_runs]
+      discord_digest: true
+    failure_policy:
+      no_review_items: cron_runs.status=skipped
+
+  - name: phe_scheduled_team_prompt_jobs
+    type: scheduled
+    hermes_schedule: "0 11 * * 1-5"
+    timezone: local
+    purpose: Execute pre-defined team prompt requests/digests after the knowledge layer updates.
+    script_target: scripts/cron/phe_scheduled_team_prompt_jobs.ts
+    enabled_after:
+      - team_prompt_jobs_configured
+      - supabase_project_created
+    input:
+      config_file: config/scheduled_team_prompts.yaml
+    steps:
+      - load active scheduled prompt jobs
+      - retrieve relevant prompt_assets via vector+CPS+freshness scoring
+      - generate requested prompt/report
+      - save team_requests and generated prompt output
+      - publish to configured Discord output channel
+    caps:
+      max_jobs_per_run: 10
+    output:
+      tables: [team_requests, prompt_assets, feedback_signals, cron_runs]
+      discord_output: true
+    failure_policy:
+      no_matching_assets: respond_with_needs_more_data
+      generation_failed: record_failed_cron_run

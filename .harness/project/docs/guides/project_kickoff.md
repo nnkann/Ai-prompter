@@ -5,6 +5,14 @@ tags: [cps, stack, kickoff]
 relates-to:
   - path: ../PRD.md
     rel: references
+  - path: ./bot_runtime_strategy.md
+    rel: extends
+  - path: ./agent_boundary_and_learning_architecture.md
+    rel: extends
+  - path: ./source_discovery_cps_schema_cron_policy.md
+    rel: extends
+  - path: ./bootstrap_sequence_and_cron_contract.md
+    rel: governs
 status: in-progress
 created: 2026-06-04
 ---
@@ -60,16 +68,16 @@ Prompt-Hermes-Engine(PHE)는 팀원이 디스코드에 던진 X, LinkedIn, YouTu
 - S1: `#reference_artist`를 단일 입력 허브로 두고 Hermes가 링크/이미지 컨텍스트를 분석해 정제 프롬프트와 제작 스펙으로 변환한다.
   ssot: docs/PRD.md
 - S2: Supabase `trend_knowledge_hub`와 Google Drive 팀 폴더를 저장 계약으로 고정하고, GPT Action 또는 얇은 서버리스 endpoint가 구조 데이터와 미디어 링크를 분기 저장하도록 한다.
-  ssot: docs/WIP/guides--pl_pipeline_contract.md
+  ssot: docs/guides/pipeline_contract.md
 - S3: `#prompt-generator` 웹훅과 OpenAI Sites 대시보드를 결과 노출 표면으로 두고, 복사/피드백/검색 데이터를 다음 Hermes 생성 컨텍스트로 재사용한다.
-  ssot: docs/WIP/guides--pl_pipeline_contract.md
+  ssot: docs/guides/pipeline_contract.md
 - S4: 제품 코드/문서와 하네스 runtime adapter를 명시적으로 분리하고, 실제 사용할 runtime별 보존/정리 기준을 문서화한다.
   ssot: docs/guides/mt_harness_adapter_boundary.md
 
 ### current
 
 ```text
-current: Phase 1 파이프라인 계약 정의 → docs/WIP/guides--pl_pipeline_contract.md
+current: Phase 1 파이프라인 계약 정의 → docs/guides/pipeline_contract.md
 ```
 
 ## 기술 결정
@@ -115,12 +123,17 @@ PHE 제품 구조는 `src/`, `docs/PRD.md`, `docs/guides/project_kickoff.md`, `d
 
 ## 구현 순서 (Phase 1)
 
-1. Pipeline 계약: Discord 입력 payload, GPT/Hermes output schema, Supabase insert payload, Google Drive 파일/URL 규칙을 한 문서로 고정한다.
-2. Storage 스키마: Supabase SQL과 Google Drive 폴더/권한 정책을 실제 실행 가능한 setup 문서로 정리한다.
-3. Actions OpenAPI: GPT/Hermes가 호출할 Supabase/Drive 저장 endpoint 명세를 작성한다.
-4. Dashboard prompt: OpenAI Sites에서 생성할 탭, 필터, 카드, 복사 버튼 요구사항을 정리한다.
-5. Feedback/RAG 루프: 사용성 카운팅과 다음 생성 컨텍스트 참조 규칙을 정의한다.
-6. Repo 구조 경계: 제품 구조와 하네스 adapter 구조를 구분하고 runtime 정리 기준을 확정한다.
+1. Bootstrap sequence: Supabase 프로젝트 생성, schema migration, Google Drive 폴더/권한, PHE endpoint/bot boundary, manual Discord intake 검증을 cron보다 먼저 끝낸다.
+2. Storage 스키마: `supabase/migrations/202606100001_phe_core_schema.sql`을 Supabase project에 적용하고 pgvector/cron_runs까지 확인한다.
+3. Pipeline 계약: Discord 입력 payload, GPT/Hermes output schema, Supabase insert payload, Google Drive 파일/URL 규칙을 한 문서로 고정한다.
+4. Cron contract: Supabase cron이 아니라 Hermes cron이 MVP scheduler/control-plane이다. `.harness/project/cron/phe_cron_jobs.yaml`의 gates가 만족되기 전에는 job을 생성하지 않는다.
+5. Actions OpenAPI: GPT/Hermes가 호출할 Supabase/Drive 저장 endpoint 명세를 작성한다.
+6. Sites 대시보드: 데이터 테이블과 카드 레이아웃을 OpenAI Sites용 prompt/spec으로 작성한다.
+7. 검증 CLI: starter `src/`를 분석 결과 JSON 검증 및 Supabase payload preview CLI로 전환한다.
+8. Repo 구조 경계: 제품 구조와 하네스 adapter 구조를 구분하고 runtime 정리 기준을 확정한다.
+9. Bot runtime 전략: 팀원이 쓰는 접점에는 개인 Hermes gateway bot을 노출하지 않는다. MVP에서는 PHE 전용 collector/learning agent와 team prompt request agent를 분리하고, 두 agent가 제한된 PHE endpoint/profile만 호출하게 한다.
+10. 자동 수집/학습: artist/channel watcher, Discord channel ingest, daily AI-prompt hot-topic search, ontology/embedding cluster update cron을 Phase 1 구현 범위로 구체화한다.
+11. Source discovery/CPS schema: Bing은 사용하지 않고, Google 기반 discovery와 수동 Discord intake를 우선한다. Supabase schema에는 CPS fields(`c`, `problem`, `s`, evidence, AC), pgvector, ontology cluster, feedback signals를 포함한다.
 
 ## 메모
 

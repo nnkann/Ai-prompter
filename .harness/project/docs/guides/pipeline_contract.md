@@ -6,10 +6,14 @@ problem: [P1, P2, P3]
 s: [S1, S2, S3]
 tags: [pipeline, actions, discord]
 relates-to:
-  - path: ../guides/project_kickoff.md
+  - path: ./project_kickoff.md
     rel: extends
   - path: ../PRD.md
     rel: references
+  - path: ./agent_boundary_and_learning_architecture.md
+    rel: refined-by
+  - path: ./source_discovery_cps_schema_cron_policy.md
+    rel: refines
 status: completed
 created: 2026-06-04
 updated: 2026-06-04
@@ -19,17 +23,17 @@ updated: 2026-06-04
 
 ## 목표
 
-Discord에 공유된 트렌드 소스가 GPT/Hermes 분석 결과, Supabase row, Google Drive file/link, OpenAI Sites 카드, `#prompt-generator` 알림으로 이어지는 최소 계약을 확정한다.
+자동 collector/cron 또는 Discord에 공유된 트렌드 소스가 제한된 PHE 분석 결과, Supabase row/vector/cluster, Google Drive file/link, OpenAI Sites 카드, `#prompt-generator` 알림, 팀 요청 bot 응답으로 이어지는 최소 계약을 확정한다.
 
 ## 범위
 
-- Discord `#reference_artist` 입력 payload 후보 정의.
+- 자동 source watcher, daily prompt trend cron, Discord `#reference_artist` 입력 payload 후보 정의.
 - GPT/Hermes 분석 결과 JSON schema 정의.
 - Supabase `trend_knowledge_hub` insert payload와 실패 응답 규칙 정의.
 - Google Drive 폴더, 파일 ID, 보기 URL, 권한 정책 정의.
 - GPT Action에서 호출할 REST endpoint 필요 여부와 책임 범위 정의.
 - `#prompt-generator` 웹훅 메시지 포맷 정의.
-- OpenAI Sites 대시보드가 읽어야 할 필드와 필터 기준 정리.
+- Team prompt bot과 OpenAI Sites 대시보드가 읽어야 할 필드와 필터 기준 정리.
 
 ## 선행 조건
 
@@ -49,26 +53,30 @@ Discord에 공유된 트렌드 소스가 GPT/Hermes 분석 결과, Supabase row,
 
 | 단계 | 소유 표면 | 입력 | 출력 | 실패 시 |
 |------|-----------|------|------|---------|
-| 1. 수집 | Discord `#reference_artist` | 링크, 이미지 첨부, 짧은 설명 | `discord_source_payload` | 사용자에게 보강 요청 |
-| 2. 분석 | GPT/Hermes | 수집 payload, 웹/첨부 컨텍스트 | `analysis_result` | fallback prompt와 `needs_review` 기록 |
-| 3. 저장 | REST endpoint | `analysis_result`, 미디어 파일 | Supabase row, Drive file/link | 부분 실패를 JSON으로 반환 |
-| 4. 알림 | Discord webhook | 저장 결과 | `#prompt-generator` 메시지 | endpoint result에 `webhook_status` 기록 |
-| 5. 노출 | OpenAI Sites | Supabase row 필드 | 카드, 필터, 복사 표면 | row의 `needs_review`를 표시 |
+| 1. 수집 | PHE collector bot / cron / Discord `#reference_artist` | 링크, 이미지 첨부, 짧은 설명, watched artist/channel, hot-topic search result | `source_payload` | 사용자에게 보강 요청 또는 review queue 기록 |
+| 2. 분석/학습 | 제한된 PHE profile/lane | 수집 payload, 웹/첨부 컨텍스트 | `analysis_result`, trend keywords, ontology cluster hints | fallback prompt와 `needs_review` 기록 |
+| 3. 저장 | REST endpoint | `analysis_result`, 미디어 파일, embedding text | Supabase row/vector/cluster, Drive file/link | 부분 실패를 JSON으로 반환 |
+| 4. 요청 응답 | Team prompt bot/API | 팀원 요청, 링크, 이미지, scheduled request | retrieval result, generated prompt | low-confidence면 review queue 표시 |
+| 5. 알림 | Discord webhook | 저장/생성 결과 | `#prompt-generator` 메시지 | endpoint result에 `webhook_status` 기록 |
+| 6. 노출 | OpenAI Sites/dashboard | Supabase row 필드 | 카드, 필터, 복사 표면, 수집 이력 | row의 `needs_review`를 표시 |
 
 ## 필수 필드 계약
 
-### Discord 입력 payload
+### Source 입력 payload
 
 | 필드 | 필수 | 설명 |
 |------|------|------|
-| `discord_message_id` | 예 | 중복 처리와 원문 추적 키 |
-| `channel_name` | 예 | MVP 기본값은 `reference_artist` |
-| `author_display_name` | 예 | 팀 내부 출처 표시용 |
+| `source_payload_id` | 예 | 중복 처리와 원문 추적 키 |
+| `ingest_mode` | 예 | `manual_discord`, `artist_watch_cron`, `channel_ingest_cron`, `daily_prompt_trend_cron` |
+| `discord_message_id` | 조건부 | Discord 입력일 때 원문 추적 키 |
+| `channel_name` | 조건부 | Discord 입력이면 MVP 기본값은 `reference_artist` |
+| `author_display_name` | 조건부 | 팀 내부 출처 표시용 |
 | `source_platform` | 예 | `x`, `linkedin`, `youtube`, `image`, `unknown` |
 | `origin_url` | 조건부 | 링크 입력일 때 원본 URL |
 | `attachments[]` | 조건부 | 이미지/캡처 파일명, mime, 임시 URL |
 | `user_note` | 아니오 | 사용자가 남긴 맥락 |
 | `submitted_at` | 예 | Discord 메시지 시각 |
+| `watched_entity` | 아니오 | artist/channel/account/topic watcher에서 온 경우 watcher id/name |
 
 ### GPT/Hermes output
 
@@ -81,6 +89,9 @@ Discord에 공유된 트렌드 소스가 GPT/Hermes 분석 결과, Supabase row,
 | `production_specs` | 예 | 스타일, 카메라, 조명, 모델, 비율, 금지 요소 JSON |
 | `source_summary` | 예 | 원본에서 뽑은 트렌드 요약 |
 | `tags[]` | 예 | 검색·필터용 영문/한글 혼용 태그 |
+| `trend_keywords[]` | 예 | 최신 키워드/트렌드 검색 기준 |
+| `ontology_clusters[]` | 예 | artist/style/use-case/model/result cluster 연결 |
+| `embedding_text` | 예 | pgvector embedding 생성에 사용할 정규화 텍스트 |
 | `confidence` | 예 | `high`, `medium`, `low` |
 | `needs_review` | 예 | 로그인 장벽, 저품질 캡처, 파싱 실패 여부 |
 
@@ -97,7 +108,25 @@ Discord에 공유된 트렌드 소스가 GPT/Hermes 분석 결과, Supabase row,
 | `drive_file_ids[]` | 아니오 | 업로드된 파일이 있을 때만 |
 | `drive_view_urls[]` | 아니오 | 팀 내부 보기 URL |
 | `source_summary` | 예 | PRD 테이블 확장 후보 |
+| `trend_keywords[]` | 예 | 최신 키워드/트렌드 필터와 retrieval 기준 |
+| `ontology_clusters[]` | 예 | RAG/ontology cluster 연결 |
+| `embedding` | 예 | Supabase pgvector 컬럼 |
+| `feedback_signals` | 아니오 | copy/use/rating/revision 등 후속 학습용 JSONB |
 | `needs_review` | 예 | Sites 운영 필터 |
+
+### Team prompt request payload
+
+| 필드 | 필수 | 설명 |
+|------|------|------|
+| `request_id` | 예 | 팀 요청 추적 키 |
+| `request_source` | 예 | `discord`, `slack_later`, `scheduled` |
+| `requester_display_name` | 조건부 | 팀원 요청이면 표시명 |
+| `request_text` | 예 | 팀원이 원하는 결과/형식/목적 |
+| `input_links[]` | 아니오 | 요청에 포함된 참고 링크 |
+| `input_attachments[]` | 아니오 | 요청에 포함된 이미지/파일 |
+| `retrieval_filters` | 아니오 | platform, artist, style, freshness, cluster 조건 |
+| `output_format` | 아니오 | Discord 답변, dashboard card, prompt pack 등 |
+| `created_at` | 예 | 요청 시각 |
 
 ### Google Drive file/link
 
@@ -155,7 +184,7 @@ OpenAI Sites는 Phase 1에서 별도 제품 코드를 만들지 않는 노출 �
 | 카드 본문 | `source_summary`, `core_prompt` |
 | 미디어 링크 | `drive_view_urls[]` |
 | 검토 대기 뱃지 | `needs_review`, `confidence` |
-| 복사/피드백 집계 | 후속 feedback 작업에서 `copy_count`, `last_used_at`, `rating` 확장 |
+| 복사/피드백 집계 | `copy_count`, `last_used_at`, `rating`, `revision_note`, `request_id` |
 
 ## 저장소 결정
 
@@ -201,8 +230,10 @@ Cloudflare R2는 기본값에서 제외한다. 다음 조건 중 하나가 실�
 ## 결정 사항
 
 - MVP 기본 미디어 저장소는 Google Drive로 둔다. R2는 CDN/공개 썸네일/객체 스토리지 기능이 실제 요구될 때 재검토한다.
-- Supabase는 구조 데이터와 검색 기준의 DB로 유지하고, Drive에는 원본 이미지/캡처와 보기 링크를 둔다.
+- Supabase는 구조 데이터, pgvector embedding, 최신 키워드, ontology cluster, 피드백/선호도 신호의 DB로 유지하고, Drive에는 원본 이미지/캡처와 보기 링크를 둔다.
 - GPT Action은 Supabase와 Drive를 각각 직접 호출하기보다 얇은 REST endpoint 하나를 호출하는 구조를 기본값으로 둔다.
+- X discovery는 유료 X API에 의존하지 않고, 수동 Discord intake와 Google 기반 discovery를 우선한다. Bing은 source discovery backend로 사용하지 않는다.
+- Cron은 수동/channel-triggered intake를 즉시 처리하고, web/source/artist search와 daily AI prompt hot-topic discovery는 하루 1회, platform/query family별 2-3개 accepted item부터 시작한다.
 - OpenAI Sites 계약은 구현 API가 아니라 읽어야 할 row 필드와 UI 표면 요구사항으로 고정한다.
 - CPS 갱신: 없음. 기존 P1/P2/P3와 S1/S2/S3 범위 안에서 계약을 구체화했다.
 
